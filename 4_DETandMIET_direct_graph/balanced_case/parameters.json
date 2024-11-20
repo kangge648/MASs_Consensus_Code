@@ -1,0 +1,54 @@
+{
+    "subAxes": 
+        {
+            "Color": "none",
+            "LineWidth": 0.5,
+            "XGrid": "off",
+            "YGrid": "off",
+            "ZGrid": "off",
+            "GridAlpha": 0.15,
+            "GridColor": [0.15, 0.15, 0.15],
+            "GridLineStyle": "-",
+            "Box": "on",
+            "TickDir": "in",
+            "Comments": "theme of the sub axes"
+        },
+
+    "zoomedArea": 
+        {
+            "Color": "none",
+            "FaceColor": "none",
+            "FaceAlpha": 0,
+            "LineStyle": "-",
+            "LineWidth": 1.5,
+            "Comments": "theme of the zoomed area"
+        },
+
+     "dynamicRect": 
+        {
+            "LineColor": [0, 0.4471, 0.7412],
+            "LineWidth": 1,
+            "MarkerSize": 9,
+            "FaceColor": [0, 0.4471, 0.7412],
+            "FaceAspect": 0.3,
+            "EdgeColor": "k",
+            "Comments": "theme of the dynamic rectangle"
+        },
+
+     "connection": 
+        {
+            "LineNumber": 2, 
+            "LineColor": [1, 1, 1],
+            "LineWidth": 0.001,
+            "LineStyle": ":",
+            "StartHeadStyle": "ellipse",
+            "StartHeadLength": 0.001,
+            "StartHeadWidth": 0.001,
+            "EndHeadStyle": "cback2",
+            "EndHeadLength": 0.001,
+            "EndHeadWidth": 0.001,
+            "Comments": "theme of the connected lines"
+        }
+
+}
+
