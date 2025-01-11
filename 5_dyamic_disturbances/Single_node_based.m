@@ -20,16 +20,18 @@ nu = 1;
 % dynamic event-triggered sigma setup
 dt = 0.001;
 Ts = 30;
-sigma0 = 1*[1 1 1 1 1 1 1];
+sigma0 = 1*[1 1 1 1 1 1];
 sigma = sigma0;
 sigma_all = zeros(1+Ts/dt,N); % sigma information of all time
 sigma_all_tmp = zeros(1,N);
 dsigma_dt = zeros(1,N); % the dot{sigma}
 delta = 0.1*NI;
-omega = 10;
+% omega = [5 2 4 5 7 9];
+omega = [3 3.5 4 4.5 5 5.5];
+% omega = [1 2 3 4 5 6];
 rho = 0.5*ones(1,N);
 o1 = 0.5*ones(1,N);
-o2 = 0.5*ones(1,N);
+o2 = 0.5*ones(1,N)/2;
 
 Time = []; % triggering time
 Trigger_count = [];
@@ -41,12 +43,12 @@ Deta = zeros(1,N);
 T = zeros(1,N);
 for i = 1:(N-1)
     Deta(i) = 16*L(i,i)*(L(i,i)/rho(i)+(0.1+0.1)^2/o1(i))-delta(i)^2;
-    T(i) = 2/sqrt(Deta(i))*(atan((2*omega+delta(i))/sqrt(Deta(i)))-atan(delta(i)/sqrt(Deta(i))));
+    T(i) = 2/sqrt(Deta(i))*(atan((2*omega(i)+delta(i))/sqrt(Deta(i)))-atan(delta(i)/sqrt(Deta(i))));
 end
 
 for i = N:N
     Deta(i) = 16*L(i,i)*(L(i,i)/rho(i)+(0.1+0.1)^2/o1(i))-delta(i)^2
-    T(i) = 2/sqrt(Deta(i))*(atan((2*omega+delta(i))/sqrt(Deta(i)))-atan(delta(i)/sqrt(Deta(i))))
+    T(i) = 2/sqrt(Deta(i))*(atan((2*omega(i)+delta(i))/sqrt(Deta(i)))-atan(delta(i)/sqrt(Deta(i))))
 end
 
 % relevant matrix setup: the information of agent i at time t, and the
@@ -66,9 +68,11 @@ w_all = zeros(1+Ts/dt,N);
 dotw_all = zeros(1+Ts/dt,N);
 
 % initial conditions of matrix
-% load x0.mat
-x0 = 20*rand([1,nx*N])-10;%save('x0','x0');
-savex0 = x0;
+load x0.mat
+load w.mat
+load v.mat
+% x0 = 20*rand([1,nx*N])-10;%save('x0','savex0');savex0 = x0;
+x0 = savex0;
 hatx0 = x0; 
 tildex0 = x0;
 hat_tildex0 = x0;
@@ -80,6 +84,7 @@ hathat_all = zeros(1+Ts/dt,nx*N);
 
 % consensus error
 chi = zeros(1+Ts/dt,N);
+chi_as_whole = zeros(1+Ts/dt, 1);
 
 %% simulation
 % some calculation for control signals to update
@@ -100,21 +105,21 @@ for t = 0:dt:Ts
     matrix_hat_tilde_x = reshape(hat_tildex0, nx, N);
 
     % error information
-    if count > 1
-        for i = 1:N
-            v_all(count,i) = 2*rand(1)-1;  % -1到1之间
-            v_all(count,i) = v_all(count,i)/10;
-            dotw_all(count,i) = 2*rand(1)-1;  % -1到1之间
-            dotw_all(count,i) = dotw_all(count,i)/10;
-            w_all(count,i) = w_all(count-1,i)+dotw_all(count,i);
-            if w_all(count,i) < -1/10
-                w_all(count,i) = -1/10;
-            end
-            if w_all(count,i) > 1/10
-                w_all(count,i) = 1/10;
-            end
-        end
-    end
+    % if count > 1
+    %     for i = 1:N
+    %         v_all(count,i) = 2*rand(1)-1;  % -1到1之间
+    %         v_all(count,i) = v_all(count,i)/10;
+    %         dotw_all(count,i) = 2*rand(1)-1;  % -1到1之间
+    %         dotw_all(count,i) = dotw_all(count,i)/10;
+    %         w_all(count,i) = w_all(count-1,i)+dotw_all(count,i);
+    %         if w_all(count,i) < -1/10
+    %             w_all(count,i) = -1/10;
+    %         end
+    %         if w_all(count,i) > 1/10
+    %             w_all(count,i) = 1/10;
+    %         end
+    %     end
+    % end
 
     % simulation for agents
     for i = 1:N
@@ -128,14 +133,16 @@ for t = 0:dt:Ts
         if chi(count,i) < 0
             chi(count,i) = -chi(count,i);
         end
+        chi_as_whole(count,1) = chi_as_whole(count,1)+chi(count,i);
         matrix_x(:,i) = matrix_x(:,i)+u*dt+v_all(count,i)*dt; %  update x, u = c*K*matrix_hat_r(:,i);
         matrix_tilde_x(:,i) = matrix_x(:,i)+w_all(count,i);
         e(:,i) = matrix_hat_tilde_x(:,i)-matrix_tilde_x(:,i); % update error information
 
-        fi = 4*L(i,i)*e(:,i)^2-rho(i)*delta_x-omega*sigma(i)-o2(i);
+        fi = 4*L(i,i)*e(:,i)^2-rho(i)*delta_x-omega(i)*sigma(i)-o2(i);
+        % fi = 4*L(i,i)*e(:,i)^2-rho(i)*delta_x-o2(i);
 
         ee_all(count,i) = 4*L(i,i)*e(:,i)^2;
-        eother_all(count,i) = rho(i)*delta_x+omega*sigma(i)+o2(i);
+        eother_all(count,i) = rho(i)*delta_x+omega(i)*sigma(i)+o2(i);
         hathat_all(count,i) = rho(i)*delta_x;
 
         if fi >= 0 % event-triggered
@@ -201,10 +208,10 @@ Fig = Fig+1;
 for j = 1:nx
     subplot(nx,1,j)
     plot(0:dt:Ts,x_all(:,j:1:end),'-','linewidth',1.5)
-    xlabel('$t$','Interpreter','Latex');ylabel(strcat('$x_{i}$'),'Interpreter','Latex');
+    xlabel('$t$','Interpreter','Latex','FontSize',16,'FontWeight','bold');ylabel(strcat('$x_{i}$'),'Interpreter','Latex','FontSize',16,'FontWeight','bold');
     box on
 end
-legend('Agent 1','Agent 2','Agent 3','Agent 4','Agent 5','Agent 6','FontName','Times','FontSize',8,'NumColumns',3,'FontWeight','bold','Location','southeast')
+legend('Agent 1','Agent 2','Agent 3','Agent 4','Agent 5','Agent 6','FontName','Times','FontSize',10,'NumColumns',3,'FontWeight','bold','Location','northeast')
 
 % state tildex
 figure(Fig)
@@ -212,10 +219,10 @@ Fig = Fig+1;
 for j = 1:nx
     subplot(nx,1,j)
     plot(0:dt:Ts,tilde_x_all(:,j:1:end),'-','linewidth',1.5)
-    xlabel('$t$','Interpreter','Latex');ylabel(strcat('$\tilde{x}_{',num2str(j),'}$'),'Interpreter','Latex');
+    xlabel('$t$','Interpreter','Latex','FontSize',16,'FontWeight','bold');ylabel(strcat('$\tilde{x}_i$'),'Interpreter','Latex','FontSize',16,'FontWeight','bold');
     box on
 end
-legend('Agent 1','Agent 2','Agent 3','Agent 4','Agent 5','Agent 6','FontName','Times','FontSize',8,'NumColumns',3,'FontWeight','bold','Location','southeast')
+legend('Agent 1','Agent 2','Agent 3','Agent 4','Agent 5','Agent 6','FontName','Times','FontSize',10,'NumColumns',3,'FontWeight','bold','Location','northeast')
 
 % state hat_tildex
 figure(Fig)
@@ -239,12 +246,21 @@ for j = 1:N
 end
 
 % Ts = 15;
-% sigma 合并一起显示
+% chi 合并一起显示
 figure(Fig)
 Fig = Fig+1;
-plot(0:dt:Ts,sigma_all(1:1:Ts/dt+1,1:1:end),'-','linewidth',1.5)
+plot(0:dt:Ts,chi(1:1:Ts/dt+1,1:1:end),'-','linewidth',1.5)
 xlabel('$t$','Interpreter','Latex');ylabel(strcat('$\chi_{i}$'),'Interpreter','Latex');
 legend('Agent 1','Agent 2','Agent 3','Agent 4','Agent 5','Agent 6','FontName','Times','FontSize',8,'NumColumns',3,'FontWeight','bold','Location','southeast')
+
+% 累加chi 一起显示
+figure(Fig)
+Fig = Fig+1;
+plot(0:dt:Ts,chi_as_whole(1:1:Ts/dt+1),'-','linewidth',1.5)
+set(gca, 'YScale', 'log'); % 设置横坐标为对数坐标
+xlabel('$t$','Interpreter','Latex');ylabel(strcat('$\sum_{i\in\mathcal{V}}\chi_{i}$'),'Interpreter','Latex');
+%legend('Agent 1','Agent 2','Agent 3','Agent 4','Agent 5','Agent 6','FontName','Times','FontSize',8,'NumColumns',3,'FontWeight','bold','Location','southeast')
+
 
 %%
 % trigger time
@@ -285,25 +301,46 @@ for i = 1:N
 end
 
 for i = 1:N
-    subplot(N,1,i)
+    pos1 = [0.1 0.92-i*0.13-(i-1)*0.0125 0.8 0.14];
+    subplot('Position',pos1)
     hold on
-    Mini = Min(i)*ones(1,Ts/dt+1);
-    plot(0:dt:Ts,Mini,'linestyle',':','color',[1 0 0],'LineWidth',1,'MarkerSize',2)% itself
     plot(Trigger(:,i),interval(:,i),'o','color',[0 0 1],'LineWidth',0.5,...
         'MarkerSize',2,'DisplayName',strcat('$\hat{T}^{',num2str(i),'}_{k}$'))
-
+    hold on
     % Triggeri = Trigger(count(i),i)/count(i)*ones(1,Ts/dt+1); %最后一次触发的时刻/触发次数
     Triggeri = Ts/count(i)*ones(1,Ts/dt+1); %仿真时间/触发次数
     plot(0:dt:Ts,Triggeri,'linestyle','--','LineWidth',1,'MarkerSize',2)
     hold on
+    Mini = Min(i)*ones(1,Ts/dt+1);
+    plot(0:dt:Ts,Mini,'linestyle',':','color',[1 0 0],'LineWidth',1,'MarkerSize',2)% itself
+    hold on
+    ensure_mini = T(i)*ones(1,Ts/dt+1);
+    plot(0:dt:Ts,ensure_mini,'linestyle','-.','LineWidth',1,'MarkerSize',2)
+    if i == 6
+        show = T(i)-0.03;
+        text(Ts+0.2,show,num2str(roundn(T(i),-4)),'FontSize',12,'FontWeight','bold') %仿真时间/触发次数
+    else
+        text(Ts+0.2,T(i),num2str(roundn(T(i),-4)),'FontSize',12,'FontWeight','bold') %仿真时间/触发次数
+    end
+    hold on
     % text(Ts+0.2,Trigger(count(i),i)/count(i)+0.2,num2str(roundn(Trigger(count(i),i)/count(i),-4)),'FontSize',10,'FontWeight','bold')%最后一次触发的时刻/触发次数
-    text(Ts+0.2,Ts/count(i)+0.4,num2str(roundn(Ts/count(i),-4)),'FontSize',10,'FontWeight','bold') %仿真时间/触发次数
-    text(Ts+0.2,Min(i),num2str(roundn(Min(i),-4)),'FontSize',10,'FontWeight','bold')
-    xlabel('$t$','Interpreter','Latex');ylabel(strcat('$T^{',num2str(i),'}_{k}$'),'Interpreter','Latex')
+    text(Ts+0.2,Ts/count(i),num2str(roundn(Ts/count(i),-4)),'FontSize',12,'FontWeight','bold') %仿真时间/触发次数
+    text(Ts+0.2,Min(i),num2str(roundn(Min(i),-4)),'FontSize',12,'FontWeight','bold')
+    if i == 6
+        xlabel('$t$','Interpreter','Latex');
+    else
+        set(gca,'xticklabel',[])
+    end
+    ylabel(strcat('$T^{',num2str(i),'}_{k}$'),'Interpreter','Latex')
     set(gca,'YScale','log');
-    ylim([10^-3,10])
+    set(gca,'XTick',[10,20,30]) 
+    set(gca,'YTick',[0.01,0.1,1]) 
+    ylim([10^-2,2])
     box on
 end
+
+legend({strcat('$T_k^i$'), ...
+     '$\mathrm{mean}_k\{T_k^i\}$','$\min_k\{T_k^i\}$','Guaranteed $T_i$'},'NumColumns',4,'Interpreter','Latex','FontSize',10', 'Location','northeast')
 
 % sigma 每个单独一张小图展示
 figure(Fig)
@@ -321,8 +358,9 @@ end
 figure(Fig)
 Fig = Fig+1;
 plot(0:dt:Ts,sigma_all(1:1:Ts/dt+1,1:1:end),'-','linewidth',1.5)
-xlabel('$t$','Interpreter','Latex');ylabel(strcat('$\sigma_{i}$'),'Interpreter','Latex');
-legend('Agent 1','Agent 2','Agent 3','Agent 4','Agent 5','Agent 6','FontName','Times','FontSize',8,'NumColumns',3,'FontWeight','bold','Location','southeast')
+xlabel('$t$','Interpreter','Latex','FontSize',16);ylabel(strcat('$\sigma_{i}$'),'Interpreter','Latex','FontSize',16);
+set(gca,'YTick',[4,8,12,16]) 
+legend('Agent 1','Agent 2','Agent 3','Agent 4','Agent 5','Agent 6','FontName','Times','FontSize',10,'NumColumns',3,'FontWeight','bold','Location','northeast')
 
 
 figure(Fig)
